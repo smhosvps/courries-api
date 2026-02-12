@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Verification -  Courries</title>
+    <style>
+        /* Embed styles for better client compatibility */
+        .otp-box {
+            background-color: #ffeaea; /* Light red/orange for urgency */
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border: 1px dashed #dc3545; /* Red border */
+        }
+        .otp-code {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 0;
+            letter-spacing: 4px;
+            color: #dc3545; /* Red/Orange for OTP */
+        }
+        .header-logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #17a2b8; /* A teal/blue often used for logistics/speed */
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8f9fa; color: #333333;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; padding: 0;">
+        <tr>
+            <td align="center" style="padding: 20px;">
+                <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
+                    
+                    <tr>
+                        <td style="padding: 40px; text-align: center;">
+                            
+                            <div class="header-logo">
+                                Courries
+                            </div>
+                            
+                            <h1 style="font-size: 28px; color: #333333; margin: 0 0 15px 0; font-weight: 600;">Confirm Your Account</h1>
+                            
+                            <p style="font-size: 16px; line-height: 1.6; color: #555555; margin-bottom: 30px;">
+                                To activate your  Courries account, please enter the following verification code in the app/website:
+                            </p>
+                            
+                            <div class="otp-box">
+                                <p class="otp-code">
+                                    <%= otp %>
+                                </p>
+                            </div>
+                            
+                            <p style="font-size: 14px; color: #dc3545; margin-bottom: 40px; font-weight: bold;">
+                                This code is valid for the next **5 minutes**. Please use it immediately.
+                            </p>
+                            
+                            <a href="#" style="display: inline-block; padding: 12px 25px; background-color: #17a2b8; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                                Back to App
+                            </a>
+
+                            <hr style="border: none; border-top: 1px solid #eeeeee; width: 60%; margin: 35px auto;">
+
+                            <h2 style="font-size: 20px; color: #333333; margin: 0 0 10px 0; font-weight: 600;">Get Your Delivery Started!</h2>
+
+                            <p style="font-size: 14px; line-height: 1.5; color: #555555; margin-bottom: 25px;">
+                                Welcome aboard! Whether you're sending a parcel across town or delivering orders to your customers,  Courries is ready to connect you with reliable riders.
+                            </p>
+                            
+                            <p style="font-size: 14px; color: #555555; margin-bottom: 20px;">
+                                For any account or technical issues, reach out to our support team:
+                            </p>
+                            <p style="font-size: 14px; margin: 0;">
+                                <a href="mailto:support@swiftsend.com" style="color: #17a2b8; text-decoration: none; font-weight: bold;">support@swiftsend.com</a>
+                            </p>
+                            
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="padding: 20px 40px; border-top: 1px solid #dee2e6; text-align: center; background-color: #f1f1f1;">
+                            <p style="font-size: 18px; font-weight: bold; color: #17a2b8; margin: 0 0 15px 0;"> Courries</p>
+                            
+                            <p style="font-size: 12px; color: #888888; margin: 0 0 5px 0;">
+                                Reliable Delivery. Simple Tracking.
+                            </p>
+                            <p style="font-size: 12px; color: #888888; margin: 0;">
+                                &copy; <%= new Date().getFullYear() %> SwiftSend App. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

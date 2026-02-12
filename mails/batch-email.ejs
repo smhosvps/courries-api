@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Email from SMHOS App</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style type="text/css">
+        /* CLIENT-SPECIFIC STYLES */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; }
+
+        /* RESET STYLES */
+        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        table { border-collapse: collapse !important; }
+        body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+
+        /* iOS BLUE LINKS */
+        a[x-apple-data-detectors] {
+            color: inherit !important;
+            text-decoration: none !important;
+            font-size: inherit !important;
+            font-family: inherit !important;
+            font-weight: inherit !important;
+            line-height: inherit !important;
+        }
+
+        /* GMAIL BLUE LINKS */
+        u + #body a {
+            color: inherit;
+            text-decoration: none;
+            font-size: inherit;
+            font-family: inherit;
+            font-weight: inherit;
+            line-height: inherit;
+        }
+
+        /* SAMSUNG MAIL BLUE LINKS */
+        #MessageViewBody a {
+            color: inherit;
+            text-decoration: none;
+            font-size: inherit;
+            font-family: inherit;
+            font-weight: inherit;
+            line-height: inherit;
+        }
+
+        /* Universal styles */
+        .primary-bg { background-color: #15057f; }
+        .secondary-bg { background-color: #f8f9fa; }
+        .white-bg { background-color: #ffffff; }
+        .primary-text { color: #15057f; }
+        .secondary-text { color: #4a4a4a; }
+        .light-text { color: #ffffff; }
+        .muted-text { color: #6c757d; }
+        .success-text { color: #4CAF50; }
+        .btn-primary {
+            background-color: #15057f;
+            border-radius: 4px;
+            color: #ffffff;
+            display: inline-block;
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1;
+            padding: 12px 24px;
+            text-decoration: none;
+            text-align: center;
+        }
+        .social-icon {
+            display: inline-block;
+            margin: 0 5px;
+        }
+
+        /* Media Queries */
+        @media screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+            }
+            .fluid {
+                max-width: 100% !important;
+                height: auto !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+            .stack-column,
+            .stack-column-center {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                direction: ltr !important;
+            }
+            .stack-column-center {
+                text-align: center !important;
+            }
+            .center-on-mobile {
+                text-align: center !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+            .column-reverse {
+                display: table-header-group !important;
+            }
+            .padding-sm {
+                padding: 10px !important;
+            }
+            .padding-md {
+                padding: 20px !important;
+            }
+            .padding-lg {
+                padding: 30px !important;
+            }
+            .mobile-padding-top {
+                padding-top: 15px !important;
+            }
+            .mobile-padding-bottom {
+                padding-bottom: 15px !important;
+            }
+            .mobile-padding-lr {
+                padding-left: 15px !important;
+                padding-right: 15px !important;
+            }
+            h1 {
+                font-size: 22px !important;
+            }
+            h2 {
+                font-size: 18px !important;
+            }
+            .hide-on-mobile {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+            }
+        }
+    </style>
+</head>
+<body id="body" style="margin: 0; padding: 0; width: 100%; background-color: #f5f7fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    <center style="width: 100%; background-color: #f5f7fa; padding: 30px 0;">
+        <!-- Preheader Text (Hidden) -->
+        <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
+            Message from SMHOS App: <%= subject %>
+        </div>
+
+        <!-- Email Container -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600" style="margin: auto; border-radius: 8px; overflow: hidden;" class="email-container">
+            <!-- Header -->
+            <tr>
+                <td class="primary-bg padding-md" style="padding: 30px 40px; text-align: center;">
+                    <img src="https://smhos.org/transfer/img/smhos-logo.png" alt="SMHOS Logo" width="180" style="height: auto; display: block; margin: 0 auto 20px auto;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: 0.5px;">SMHOS App</h1>
+                </td>
+            </tr>
+
+            <!-- Content Section -->
+            <tr>
+                <td class="white-bg padding-lg" style="padding: 40px; text-align: left; background-color: #ffffff;">
+                    <!-- Greeting -->
+                    <h2 style="margin: 0 0 20px; color: #15057f; font-size: 22px; font-weight: 600;">Hello there,</h2>
+                    
+                    <!-- Subject Line -->
+                    <h3 style="color: #4CAF50; margin: 0 0 25px; font-size: 18px; font-weight: 600; padding-bottom: 15px; border-bottom: 1px solid #eeeeee;">
+                        Subject: <%= subject %>
+                    </h3>
+                    
+                    <!-- Sender Info -->
+                    <p style="font-size: 16px; margin: 0 0 20px; color: #4a4a4a;">
+                        <strong style="color: #15057f;">From:</strong> SMHOS Information Team
+                    </p>
+                    
+                    <!-- Message Body -->
+                    <div style="background-color: #f8f9fa; border-left: 4px solid #15057f; border-radius: 4px; padding: 25px; margin: 0 0 30px;">
+                        <p style="font-size: 16px; line-height: 1.6; margin: 0; color: #4a4a4a;"><%= text %></p>
+                    </div>
+                    
+                    <!-- CTA Button -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 30px auto;">
+                        <tr>
+                            <td style="border-radius: 4px; background: #15057f; text-align: center;">
+                                <a href="https://smhos.org/dashboard" target="_blank" style="background: #15057f; border: 15px solid #15057f; font-family: sans-serif; font-size: 16px; line-height: 1.1; text-align: center; text-decoration: none; display: block; border-radius: 4px; font-weight: bold; color: #ffffff;">
+                                    Visit Dashboard &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Divider -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee;"></td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Footer Message -->
+                    <p style="font-size: 14px; line-height: 1.6; color: #6c757d; margin: 25px 0 0;">
+                        This email was sent through the SMHOS platform. If you have any questions or need assistance, please contact our support team at <a href="mailto:support@smhos.org" style="color: #15057f; text-decoration: underline;">support@smhos.org</a>
+                    </p>
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td class="primary-bg padding-md" style="padding: 30px 40px; text-align: center; background-color: #15057f;">
+                    <!-- Social Media Icons -->
+                    <!-- <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto 20px;">
+                        <tr>
+                            <td>
+                                <a href="https://facebook.com/smhos" target="_blank" class="social-icon">
+                                    <img src="https://cdn-icons-png.flaticon.com/128/733/733547.png" width="32" height="32" alt="Facebook" style="display: block; border: 0;">
+                                </a>
+                            </td>
+                            <td width="10">&nbsp;</td>
+                            <td>
+                                <a href="https://twitter.com/smhos" target="_blank" class="social-icon">
+                                    <img src="https://cdn-icons-png.flaticon.com/128/733/733579.png" width="32" height="32" alt="Twitter" style="display: block; border: 0;">
+                                </a>
+                            </td>
+                            <td width="10">&nbsp;</td>
+                            <td>
+                                <a href="https://instagram.com/smhos" target="_blank" class="social-icon">
+                                    <img src="https://cdn-icons-png.flaticon.com/128/2111/2111463.png" width="32" height="32" alt="Instagram" style="display: block; border: 0;">
+                                </a>
+                            </td>
+                            <td width="10">&nbsp;</td>
+                            <td>
+                                <a href="https://linkedin.com/company/smhos" target="_blank" class="social-icon">
+                                    <img src="https://cdn-icons-png.flaticon.com/128/3536/3536505.png" width="32" height="32" alt="LinkedIn" style="display: block; border: 0;">
+                                </a>
+                            </td>
+                        </tr>
+                    </table> -->
+                    
+                    <!-- Address -->
+                    <p style="margin: 0 0 15px; color: #ffffff; font-size: 14px; line-height: 1.5;">
+                        SMHOS Headquarters<br>
+                        Plot 17, Birabi street, GRA<br>
+                        Port Harcourt.
+                    </p>
+                
+                    <!-- Copyright -->
+                    <p style="margin: 0; color: #ffffff; font-size: 14px; opacity: 0.8;">
+                        &copy; 2025 SMHOS. All rights reserved.
+                    </p>
+                </td>
+            </tr>
+        </table>
+        <!-- End Email Container -->
+    </center>
+</body>
+</html>
