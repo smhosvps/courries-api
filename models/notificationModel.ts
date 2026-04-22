@@ -6,13 +6,12 @@ export interface INotification extends Document {
     status: string;
     read: boolean;
     recipient: mongoose.Schema.Types.ObjectId;
-    booking: mongoose.Schema.Types.ObjectId;
 }
 
 const notificationSchema = new Schema<INotification>({
     recipient: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'courries-user',
         required: true
     },
     type: {
@@ -27,15 +26,11 @@ const notificationSchema = new Schema<INotification>({
         type: String,
         required: true
     },
-    booking: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Booking'
-    },
 
 }, {
     timestamps: true
 });
 
-const Notification: Model<INotification> = mongoose.model("Notification", notificationSchema);
+const Notification: Model<INotification> = mongoose.model("courriesNotification", notificationSchema);
 
 export default Notification;

@@ -1,18 +1,47 @@
-// src/models/User.ts
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, { Document, Model, Schema, Types } from "mongoose";
 import jwt, { SignOptions } from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
 // Regular expressions for validation
 const emailRegexPattern: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-interface IAddress { 
-  addressType: "home" | "office" | "other"; 
+interface IAddress {
+  addressType: "home" | "work" | "other";
   street: string;
   city: string;
-  state: string; 
-  zipCode: string;
+  state: string;
   country: string;
+}
+
+interface IBank {
+  bank_name: "home" | "office" | "other";
+  account_number: string;
+  account_name: string; 
+  paystackRecipientCode: string;
+  isActive: boolean
+}
+
+
+export interface IReview {
+  user: Types.ObjectId;
+  rating: number;
+  comment: string;
+  deliveryId: Types.ObjectId;
+  response?: {
+    comment?: string;
+    respondedAt?: Date;
+  };
+  images?: string[];
+  isVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// OneSignal Player ID interface
+interface IOneSignalPlayerId {
+  playerId: string;
+  deviceType: string; // 'ios', 'android', 'web'
+  lastActive: Date;
 }
 
 // Delivery Partner specific interface
@@ -24,6 +53,7 @@ interface IDeliveryPartnerInfo {
     color?: string;
     year?: number;
   };
+
   documents: {
     license: {
       number: string;
@@ -40,13 +70,27 @@ interface IDeliveryPartnerInfo {
       expiryDate: Date;
       image: string;
     };
+    nin: {
+      number: string;
+      house_address: string;
+      image: string;
+    };
   };
+  languages?: Array<"English" | "Pidgin" | "Yoruba" | "Hausa" | "Igbo" | "French" | "Other">;
   status: "available" | "busy" | "offline" | "on_break";
   rating: number;
   totalDeliveries: number;
   completedDeliveries: number;
   cancelledDeliveries: number;
   averageRating: number;
+  stats: {
+    totalDeliveries: number;
+    completedDeliveries: number;
+    cancelledDeliveries: number;
+    averageRating: number;
+    totalReviews: number;
+    acceptanceRate: number;
+  };
   earnings: {
     total: number;
     pending: number;
@@ -55,8 +99,8 @@ interface IDeliveryPartnerInfo {
   };
   location?: {
     coordinates: {
-      lat: number;
-      lng: number;
+      type: 'Point';
+      coordinates: [number, number]; // [longitude, latitude]  ✅ FIXED ORDER
     };
     lastUpdated: Date;
   };
@@ -64,8 +108,17 @@ interface IDeliveryPartnerInfo {
   currentDelivery?: mongoose.Types.ObjectId;
   workingHours: {
     start: string; // "09:00"
-    end: string; // "18:00"
+    end: string;   // "18:00"
     timezone: string;
+  };
+  other_information: {
+    why_become_a_delivery_driver: string;
+    income_target: string;
+    next_of_kin_name: string; 
+    next_of_kin_phone: string;
+    next_of_kin_nin: string;
+    next_of_kin_address: string;   // ✅ corrected spelling
+    next_of_kin_occupation: string;
   };
   preferences: {
     maxDistance: number; // in km
@@ -76,8 +129,11 @@ interface IDeliveryPartnerInfo {
     identity: boolean;
     vehicle: boolean;
     backgroundCheck: boolean;
+    submitted: boolean;
     verified: boolean;
   };
+
+  reviews: Types.DocumentArray<IReview>;
 }
 
 export interface IUser extends Document {
@@ -86,24 +142,35 @@ export interface IUser extends Document {
   firstName: string;
   lastName: string;
   password: string;
-  userType: "customer" | "delivery_partner" | "admin";
+  userType: "customer" | "delivery_partner" | "admin" | "super admin";
   phone?: string;
   isVerified: boolean;
   otp?: string;
   otpExpires?: Date;
   dateOfBirth?: Date;
+  adminRiders: "Yes" | "No";
   gender?: string;
+  address: string;
   accountType?: string;
+  // Add these new fields for Apple authentication
+  appleUserId: string,
+  googleId: string,
+  isAppleLinked: boolean,
+  authProvider: 'local' | 'apple' | 'google',
   register_source?: string;
   register_device?: string;
   addresses: IAddress[];
+  bank: IBank[];
   avatar?: {
     public_id: string;
     url: string;
   };
+  // OneSignal Player ID - now a single object instead of array
+  onesignalPlayerId?: IOneSignalPlayerId;
 
   // Delivery Partner Specific Fields (optional)
   deliveryPartnerInfo?: IDeliveryPartnerInfo;
+
 
   // Deletion Fields
   deletionRequested: boolean;
@@ -118,50 +185,100 @@ export interface IUser extends Document {
   comparePassword: (password: string) => Promise<boolean>;
   getJwtToken: () => string;
   isDeliveryPartner: () => boolean;
+  getRefreshToken(): string;
   updateLocation: (lat: number, lng: number) => Promise<void>;
 }
+
+const bankSchema = new Schema<IBank>({
+  bank_name: {
+    type: String,
+    required: true,
+  },
+  account_name: { type: String, required: true },
+  account_number: { type: String, required: true },
+  paystackRecipientCode: { type: String },
+  isActive: { type: Boolean, required: true, default: false },
+});
 
 const addressSchema = new Schema<IAddress>({
   addressType: {
     type: String,
-    enum: ["home", "office", "other"],
+    enum: ["home", "work", "other", "office"],
     required: true,
   },
   street: { type: String, required: true },
   city: { type: String, required: true },
   state: { type: String, required: true },
-  zipCode: { type: String, required: true },
-  country: { type: String, required: true },
+  country: { type: String, required: true, default: "Nigeria" },
 });
+
+
+const reviewSchema = new Schema({
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: "courries-user",
+    required: true,
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5,
+  },
+  comment: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 500,
+  },
+  deliveryId: {
+    type: Schema.Types.ObjectId,
+    ref: "courries-delivery",
+    required: true,
+  },
+  response: {
+    comment: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    respondedAt: Date,
+  },
+  images: [String],
+  isVerified: {
+    type: Boolean,
+    default: true,
+  },
+}, { timestamps: true });
 
 const deliveryPartnerInfoSchema = new Schema<IDeliveryPartnerInfo>({
   vehicle: {
     type: {
       type: String,
       enum: ["bicycle", "bike", "car", "van"],
-      required: true,
     },
     model: String,
     plateNumber: String,
     color: String,
     year: Number,
   },
+
   documents: {
     license: {
-      number: { type: String, required: true },
-      expiryDate: { type: Date, required: true },
-      image: { type: String, required: true },
-    },
-    insurance: {
-      number: String,
-      expiryDate: Date,
-      image: String,
+      number: { type: String,  },
+      expiryDate: { type: Date,},
+      image: { type: String },
     },
     vehicleRegistration: {
       number: String,
       expiryDate: Date,
       image: String,
     },
+  },
+  languages: {
+    type: [String],
+    enum: ['English', 'Pidgin', 'Yoruba', 'Hausa', 'Igbo', 'French', 'Other'],
+    default: []
   },
   status: {
     type: String,
@@ -173,19 +290,46 @@ const deliveryPartnerInfoSchema = new Schema<IDeliveryPartnerInfo>({
   completedDeliveries: { type: Number, default: 0 },
   cancelledDeliveries: { type: Number, default: 0 },
   averageRating: { type: Number, default: 0 },
+  stats: {
+    totalDeliveries: { type: Number, default: 0 },
+    completedDeliveries: { type: Number, default: 0 },
+    cancelledDeliveries: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0 },
+    totalReviews: { type: Number, default: 0 },
+    acceptanceRate: { type: Number, default: 100 },
+  },
   earnings: {
     total: { type: Number, default: 0 },
     pending: { type: Number, default: 0 },
     available: { type: Number, default: 0 },
     lastPayout: Date,
   },
-  location: {
-    coordinates: {
-      lat: Number,
-      lng: Number,
+
+
+location: {
+  coordinates: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point',
+      required: true
     },
-    lastUpdated: Date,
+    coordinates: {
+      type: [Number],
+      required: true,
+      default: [0, 0],           // ✅ default coordinates
+      validate: {
+        validator: (v: number[]) => Array.isArray(v) && v.length === 2,
+        message: 'Coordinates must be [longitude, latitude]'
+      }
+    }
   },
+ lastUpdated: Date,
+},
+
+
+
+
   online: { type: Boolean, default: false },
   currentDelivery: {
     type: Schema.Types.ObjectId,
@@ -197,16 +341,25 @@ const deliveryPartnerInfoSchema = new Schema<IDeliveryPartnerInfo>({
     timezone: { type: String, default: "UTC" },
   },
   preferences: {
-    maxDistance: { type: Number, default: 20 }, // 20km
-    minDeliveryFee: { type: Number, default: 500 }, // ₦500
+    maxDistance: { type: Number, default: 20 },
+    minDeliveryFee: { type: Number, default: 500 },
     acceptedPackageTypes: [{ type: String }],
   },
   verificationStatus: {
     identity: { type: Boolean, default: false },
     vehicle: { type: Boolean, default: false },
     backgroundCheck: { type: Boolean, default: false },
-    verified: { type: Boolean, default: false },
+    submitted: { type: Boolean, default: false },
+    verified: { type: Boolean, default: false },   // ✅ default ensures field exists
   },
+  reviews: [reviewSchema],
+});
+
+
+const oneSignalPlayerIdSchema = new Schema<IOneSignalPlayerId>({
+  playerId: { type: String, required: true },
+  deviceType: { type: String, required: true, enum: ['ios', 'android', 'web'] },
+  lastActive: { type: Date, default: Date.now }
 });
 
 const userSchema = new Schema<IUser>(
@@ -228,11 +381,39 @@ const userSchema = new Schema<IUser>(
     phone: {
       type: String,
     },
+    adminRiders: {
+      type: String,
+      enum: ["Yes", "No"],
+      default: "No"
+    },
+    address: {
+      type: String
+    },
     password: {
       type: String,
       minlength: [6, "Password must be at least 6 characters"],
       required: true,
       select: false,
+    },
+    // Add these new fields for Apple authentication
+    appleUserId: {
+      type: String,
+      sparse: true,
+      unique: true,
+    },
+    googleId: {
+      type: String,
+      sparse: true,
+      unique: true,
+    },
+    isAppleLinked: {
+      type: Boolean,
+      default: false,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'apple', 'google'],
+      default: 'local',
     },
     firstName: {
       type: String,
@@ -246,9 +427,11 @@ const userSchema = new Schema<IUser>(
     },
     userType: {
       type: String,
-      enum: ["customer", "delivery_partner", "admin"],
+      enum: ["customer", "delivery_partner", "admin", "super admin"],
       default: "customer",
     },
+    // OneSignal Player ID - now a single object
+    onesignalPlayerId: oneSignalPlayerIdSchema,
     isVerified: {
       type: Boolean,
       default: false,
@@ -271,6 +454,7 @@ const userSchema = new Schema<IUser>(
       default: "active",
     },
     addresses: [addressSchema],
+    bank: [bankSchema],
     avatar: {
       public_id: String,
       url: String,
@@ -283,10 +467,17 @@ const userSchema = new Schema<IUser>(
 );
 
 // Indexes for delivery partner queries
+userSchema.index({ email: 1 });
+userSchema.index({ phone: 1 });
 userSchema.index({ userType: 1 });
+userSchema.index({ "deliveryPartnerInfo.stats.averageRating": -1 });
 userSchema.index({ "deliveryPartnerInfo.status": 1 });
 userSchema.index({ "deliveryPartnerInfo.location.coordinates": "2dsphere" });
 userSchema.index({ "deliveryPartnerInfo.online": 1 });
+userSchema.index({ "deliveryPartnerInfo.reviews.deliveryId": 1 });
+userSchema.index({ "deliveryPartnerInfo.reviews.user": 1 });
+userSchema.index({ "deliveryPartnerInfo.stats.averageRating": -1 });
+
 
 // Hash password before saving
 userSchema.pre<IUser>("save", async function (next) {
@@ -308,6 +499,17 @@ userSchema.methods.getJwtToken = function (): string {
   );
 };
 
+// Generate refresh token
+userSchema.methods.getRefreshToken = function (this: IUser): string {
+  return jwt.sign(
+    { id: this._id },
+    process.env.JWT_REFRESH_SECRET as string,
+    {
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
+    } as SignOptions
+  );
+};
+
 // Compare password
 userSchema.methods.comparePassword = async function (
   enteredPassword: string
@@ -320,16 +522,80 @@ userSchema.methods.isDeliveryPartner = function (): boolean {
   return this.userType === "delivery_partner";
 };
 
-// Update delivery partner location
-userSchema.methods.updateLocation = async function (lat: number, lng: number): Promise<void> {
+// ✅ FIXED: Update delivery partner location with correct coordinate order [lng, lat]
+userSchema.methods.updateLocation = async function (
+  lat: number,
+  lng: number
+): Promise<void> {
   if (this.userType === "delivery_partner" && this.deliveryPartnerInfo) {
     this.deliveryPartnerInfo.location = {
-      coordinates: { lat, lng },
+      coordinates: {
+        type: "Point",
+        coordinates: [lng, lat]   // GeoJSON standard: [longitude, latitude]
+      },
       lastUpdated: new Date(),
     };
     await this.save();
   }
 };
+
+userSchema.pre('save', function(next) {
+  if (this.userType === 'delivery_partner' && this.deliveryPartnerInfo) {
+    // Ensure location exists and has valid coordinates
+    if (!this.deliveryPartnerInfo.location) {
+      this.deliveryPartnerInfo.location = {
+        coordinates: { type: 'Point', coordinates: [0, 0] },
+        lastUpdated: new Date()
+      };
+    } else if (!this.deliveryPartnerInfo.location.coordinates?.coordinates ||
+               this.deliveryPartnerInfo.location.coordinates.coordinates.length !== 2) {
+      // Fix malformed location
+      this.deliveryPartnerInfo.location.coordinates = {
+        type: 'Point',
+        coordinates: [0, 0]
+      };
+      this.deliveryPartnerInfo.location.lastUpdated = new Date();
+    }
+  }
+  next();
+});
+
+userSchema.methods.updateEarnings = async function (
+  amount: number,
+  type: 'pending' | 'available' = 'pending'
+): Promise<void> {
+  if (this.userType !== 'delivery_partner' || !this.deliveryPartnerInfo) return;
+
+  // Update total and the specified type
+  this.deliveryPartnerInfo.earnings.total += amount;
+  this.deliveryPartnerInfo.earnings[type] += amount;
+  await this.save();
+};
+
+// Update delivery partner stats
+userSchema.methods.updateDeliveryPartnerStats = async function (
+  this: IUser
+): Promise<void> {
+  if (
+    this.userType !== "delivery_partner" ||
+    !this.deliveryPartnerInfo?.reviews
+  ) {
+    return;
+  }
+
+  const reviews = this.deliveryPartnerInfo.reviews;
+  const totalReviews = reviews.length;
+
+  if (totalReviews > 0) {
+    const averageRating =
+      reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
+    this.deliveryPartnerInfo.stats.averageRating = Math.round(averageRating * 10) / 10;
+  }
+
+  this.deliveryPartnerInfo.stats.totalReviews = totalReviews;
+  await this.save();
+};
+
 
 const userModel: Model<IUser> = mongoose.model("courries-user", userSchema);
 export default userModel;

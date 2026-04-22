@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Courries</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f7fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1e4b8a 0%, #1969fe 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+            background: white;
+        }
+        .welcome-message {
+            font-size: 18px;
+            margin-bottom: 25px;
+            color: #1e293b;
+        }
+        .credentials-box {
+            background: #f0f9ff;
+            border: 2px solid #1969fe;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        .credentials-box h3 {
+            color: #1969fe;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 2px solid #1969fe;
+            padding-bottom: 10px;
+        }
+        .credential-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .credential-label {
+            font-weight: 600;
+            min-width: 100px;
+            color: #1e293b;
+        }
+        .credential-value {
+            color: #1969fe;
+            font-family: monospace;
+            font-size: 16px;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 6px;
+            flex: 1;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 25px 0;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .info-item {
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .info-value {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 15px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #1e4b8a 0%, #1969fe 100%);
+            color: white;
+            text-decoration: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            transition: transform 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 25px 0;
+            font-size: 14px;
+        }
+        .warning-box ul {
+            margin-top: 10px;
+            margin-left: 20px;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            color: #64748b;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .system-name {
+            color: #1969fe;
+            font-weight: 600;
+        }
+        .badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+            .header {
+                padding: 30px 20px;
+            }
+            .content {
+                padding: 30px 20px;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            .credential-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .credential-label {
+                margin-bottom: 5px;
+            }
+            .credential-value {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Courries</h1>
+            <p>Delivery & Logistics Platform</p>
+        </div>
+
+        <div class="content">
+            <div class="welcome-message">
+                <strong>Welcome to Courries, <%= user.name %>!</strong>
+                <p style="margin-top: 10px; color: #475569;">
+                    Your account has been created successfully by the system administrator.
+                </p>
+            </div>
+
+            <div class="credentials-box">
+                <h3>🔐 Login Credentials</h3>
+                <div class="credential-item">
+                    <span class="credential-label">Email:</span>
+                    <span class="credential-value"><%= loginCredentials.email %></span>
+                </div>
+                <div class="credential-item">
+                    <span class="credential-label">Password:</span>
+                    <span class="credential-value"><%= loginCredentials.password %></span>
+                </div>
+                <div style="text-align: center; margin-top: 15px; color: #ef4444; font-size: 13px;">
+                    ⚠️ Please change your password after first login
+                </div>
+            </div>
+
+            <a href="<%= loginUrl %>" class="button">
+                Click Here to Login to Courries
+            </a>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Full Name</div>
+                    <div class="info-value"><%= user.firstName %> <%= user.lastName %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Role</div>
+                    <div class="info-value">
+                        <%= user.role %>
+                        <% if (user.role === 'delivery_partner') { %>
+                            <span class="badge" style="margin-left: 8px;">Rider</span>
+                        <% } %>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Email</div>
+                    <div class="info-value"><%= user.email %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Phone</div>
+                    <div class="info-value"><%= user.phone %></div>
+                </div>
+                <% if (user.adminRiders) { %>
+                <div class="info-item">
+                    <div class="info-label">Assigned Riders</div>
+                    <div class="info-value"><%= user.adminRiders %></div>
+                </div>
+                <% } %>
+                <div class="info-item">
+                    <div class="info-label">Account Status</div>
+                    <div class="info-value" style="color: #10b981;">Active</div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>📌 Important Information:</strong>
+                <ul>
+                    <li>This is your official Courries account</li>
+                    <li>Keep your login credentials secure</li>
+                    <li>Use your registered email for all official communications</li>
+                    <li>For technical support, contact <%= supportEmail %></li>
+                </ul>
+            </div>
+
+            <div style="background: #f1f5f9; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; color: #1e293b;">
+                    <strong>Need Help?</strong><br>
+                    • 📧 Email: <a href="mailto:<%= supportEmail %>" style="color: #1969fe; text-decoration: none;"><%= supportEmail %></a><br>
+                    • 💻 Login URL: <a href="<%= loginUrl %>" style="color: #1969fe; text-decoration: none;"><%= loginUrl %></a>
+                </p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p class="system-name">© <%= currentYear %> Courries. All rights reserved.</p>
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>For assistance, contact our support team.</p>
+        </div>
+    </div>
+</body>
+</html>
