@@ -46,7 +46,7 @@ export const authorize = (...roles: string[]) => {
         if (!req.user) {
             return res.status(401).json({ message: 'User not authenticated. Please log in.' });
         }
-        if (!roles.includes(req.user.role)) {
+        if (!roles.includes(req.user.userType)) {
             return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
         }
         next();

@@ -1,29 +1,37 @@
+// models/deliveryModel.ts
 import mongoose, { Schema, Types, Model, Document } from "mongoose";
 
 const DELIVERY_CODE_RETRY_LIMIT = 5;
 const DELIVERY_CODE_LENGTH = 5;
+const TRACKING_ID_LENGTH = 10;
 
 function generateDeliveryCode(): string {
   const randomNum = Math.floor(Math.random() * 100000);
   return randomNum.toString().padStart(DELIVERY_CODE_LENGTH, "0");
 }
 
-// Main interface for delivery properties
+function generateTrackingId(): string {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const timestamp = Date.now().toString(36).toUpperCase();
+  let randomPart = "";
+
+  for (let i = 0; i < 6; i++) {
+    randomPart += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+
+  return `COU-${timestamp.slice(-4)}${randomPart}`;
+}
+
 export interface IDelivery {
   customer: Types.ObjectId;
   deliveryPartner?: Types.ObjectId;
+  offeredPartners?: Types.ObjectId[];
   deliveryCode: string;
+  trackingId: string;
+  deliveryOption: "send package" | "recieve package";
   deliveryType: "bicycle" | "bike" | "car" | "van";
   package: {
     type: string;
-    weight: number;
-    dimensions: {
-      length: number;
-      width: number;
-      height: number;
-    };
-    description: string;
-    value?: number;
     images: string[];
   };
   pickup: {
@@ -54,7 +62,9 @@ export interface IDelivery {
     | "picked_up"
     | "in_transit"
     | "delivered"
-    | "cancelled";
+    | "request_accepted"
+    | "cancelled"
+    | "failed_to_assign";
   price?: number;
   distance?: number;
   estimatedDuration?: number;
@@ -63,6 +73,12 @@ export interface IDelivery {
   paymentMethod: "paystack" | "wallet" | "cash";
   reference: string;
   paidAt: Date;
+  basePrice: number;
+  pricePerKm: number;
+  distanceFee: number;
+  tax: number;
+  serviceFee: number;
+  totalAmount: number;
   confirmation: {
     customerConfirmed: boolean;
     partnerConfirmed: boolean;
@@ -79,6 +95,7 @@ export interface IDelivery {
       type: "Point";
       coordinates: [number, number];
     };
+    note?: string;
   }>;
   cancellationReason?: string;
   cancelledBy?: Types.ObjectId;
@@ -86,30 +103,28 @@ export interface IDelivery {
   updatedAt: Date;
 }
 
-// Instance methods interface
 export interface IDeliveryMethods {
   confirmByCustomer(code: string): Promise<{ success: boolean; message: string }>;
   confirmByPartner(code: string): Promise<{ success: boolean; message: string }>;
   markAsPickedUp(location?: { coordinates: [number, number] }): Promise<void>;
   markAsInTransit(location?: { coordinates: [number, number] }): Promise<void>;
   cancelDelivery(reason: string, cancelledBy: Types.ObjectId): Promise<void>;
+  unassignByPartner(reason: string, cancelledBy: Types.ObjectId): Promise<void>;
+  unassignPartnerAndReset(reason: string, cancelledBy: Types.ObjectId): Promise<void>;
   verifyCode(code: string): boolean;
   canBeCancelled(): boolean;
   getProgress(): number;
 }
 
-// Static methods interface
 export interface DeliveryModel extends Model<IDelivery, {}, IDeliveryMethods> {
   findByDeliveryCode(code: string): Promise<DeliveryDocument>;
+  findByTrackingId(trackingId: string): Promise<DeliveryDocument>;
 }
 
-// Combined document type
-export type DeliveryDocument = Document<unknown, {}, IDelivery> & 
-  IDelivery & 
-  IDeliveryMethods & 
-  { _id: Types.ObjectId };
+export type DeliveryDocument = Document<unknown, {}, IDelivery> &
+  IDelivery &
+  IDeliveryMethods & { _id: Types.ObjectId };
 
-// Location schema for GeoJSON format
 const locationSchema = new Schema(
   {
     type: {
@@ -151,6 +166,7 @@ const deliverySchema = new Schema<IDelivery, DeliveryModel, IDeliveryMethods>(
       type: Schema.Types.ObjectId,
       ref: "courries-user",
     },
+    offeredPartners: [{ type: Schema.Types.ObjectId, ref: "courries-user" }],
     deliveryCode: {
       type: String,
       unique: true,
@@ -163,34 +179,56 @@ const deliverySchema = new Schema<IDelivery, DeliveryModel, IDeliveryMethods>(
         message: "Delivery code must be a 5-digit number",
       },
     },
+    trackingId: {
+      type: String,
+      unique: true,
+      minlength: TRACKING_ID_LENGTH,
+      maxlength: 14,
+      validate: {
+        validator: function (v: string) {
+          return /^COU-[A-Z0-9]{10}$/.test(v);
+        },
+        message: "Tracking ID must be in format COU-XXXXXXXXXX",
+      },
+    },
     deliveryType: {
       type: String,
       enum: ["bicycle", "bike", "car", "van"],
       default: "bike",
     },
+    deliveryOption: {
+      type: String,
+      enum: ["send package", "recieve package"],
+      default: "send package",
+    },
+    basePrice: {
+      type: Number,
+      default: 0,
+    },
+    pricePerKm: {
+      type: Number,
+      default: 0,
+    },
+    distanceFee: {
+      type: Number,
+      default: 0,
+    },
+    tax: {
+      type: Number,
+      default: 0,
+    },
+    serviceFee: {
+      type: Number,
+      default: 0,
+    },
+    totalAmount: {
+      type: Number,
+      default: 0,
+    },
     package: {
       type: {
         type: String,
         required: true,
-        enum: ["document", "parcel", "food", "electronics", "other"],
-      },
-      weight: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      dimensions: {
-        length: { type: Number, min: 0 },
-        width: { type: Number, min: 0 },
-        height: { type: Number, min: 0 },
-      },
-      description: {
-        type: String,
-        required: true,
-      },
-      value: {
-        type: Number,
-        min: 0,
       },
       images: [String],
     },
@@ -237,6 +275,8 @@ const deliverySchema = new Schema<IDelivery, DeliveryModel, IDeliveryMethods>(
         "in_transit",
         "delivered",
         "cancelled",
+        "request_accepted",
+        "failed_to_assign",
       ],
       default: "pending",
     },
@@ -313,13 +353,18 @@ const deliverySchema = new Schema<IDelivery, DeliveryModel, IDeliveryMethods>(
           default: Date.now,
         },
         location: locationSchema,
+        note: { type: String },
       },
     ],
     cancellationReason: {
       type: String,
       enum: [
+        "dispatcher_request",
+        "customer_unavailable",
         "customer_request",
+        "Dont_like_dispatcher",
         "partner_unavailable",
+        "damaged_items",
         "bad_weather",
         "vehicle_issue",
         "address_issue",
@@ -336,47 +381,77 @@ const deliverySchema = new Schema<IDelivery, DeliveryModel, IDeliveryMethods>(
   }
 );
 
-// Pre-save hook for delivery code
-// Pre-save hook for delivery code - SIMPLIFIED FIX
+// Pre-save hook for delivery code and tracking ID
 deliverySchema.pre("save", async function (next) {
-  if (this.isNew && !this.deliveryCode) {
-    let attempts = 0;
-    let isUnique = false;
-    const DeliveryModel = this.constructor as DeliveryModel;
+  if (this.isNew) {
+    if (!this.deliveryCode) {
+      let attempts = 0;
+      let isUnique = false;
+      const DeliveryModel = this.constructor as DeliveryModel;
 
-    while (attempts < DELIVERY_CODE_RETRY_LIMIT && !isUnique) {
-      const potentialCode = generateDeliveryCode();
+      while (attempts < DELIVERY_CODE_RETRY_LIMIT && !isUnique) {
+        const potentialCode = generateDeliveryCode();
 
-      try {
-        const existingDelivery = await DeliveryModel.findOne({
-          deliveryCode: potentialCode,
-        });
+        try {
+          const existingDelivery = await DeliveryModel.findOne({
+            deliveryCode: potentialCode,
+          });
 
-        if (!existingDelivery) {
-          this.deliveryCode = potentialCode;
-          isUnique = true;
-          break;
+          if (!existingDelivery) {
+            this.deliveryCode = potentialCode;
+            isUnique = true;
+            break;
+          }
+        } catch (error) {
+          console.warn(`Error checking delivery code uniqueness: ${error}`);
         }
-      } catch (error) {
-        console.warn(`Error checking delivery code uniqueness: ${error}`);
+
+        attempts++;
       }
 
-      attempts++;
+      if (!isUnique) {
+        const error = new Error(
+          `Failed to generate a unique delivery code after ${DELIVERY_CODE_RETRY_LIMIT} attempts`
+        );
+        return next(error);
+      }
     }
 
-    if (!isUnique) {
-      const error = new Error(
-        `Failed to generate a unique delivery code after ${DELIVERY_CODE_RETRY_LIMIT} attempts`
-      );
-      return next(error);
-    }
-  }
+    if (!this.trackingId) {
+      let attempts = 0;
+      let isUnique = false;
+      const DeliveryModel = this.constructor as DeliveryModel;
 
-  // Initialize confirmation object for new deliveries
-  if (this.isNew) {
+      while (attempts < DELIVERY_CODE_RETRY_LIMIT && !isUnique) {
+        const potentialTrackingId = generateTrackingId();
+
+        try {
+          const existingDelivery = await DeliveryModel.findOne({
+            trackingId: potentialTrackingId,
+          });
+
+          if (!existingDelivery) {
+            this.trackingId = potentialTrackingId;
+            isUnique = true;
+            break;
+          }
+        } catch (error) {
+          console.warn(`Error checking tracking ID uniqueness: ${error}`);
+        }
+
+        attempts++;
+      }
+
+      if (!isUnique) {
+        const error = new Error(
+          `Failed to generate a unique tracking ID after ${DELIVERY_CODE_RETRY_LIMIT} attempts`
+        );
+        return next(error);
+      }
+    }
+
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Direct assignment without spread to avoid TypeScript errors
+
     this.confirmation = {
       customerConfirmed: false,
       partnerConfirmed: false,
@@ -386,12 +461,12 @@ deliverySchema.pre("save", async function (next) {
       lastConfirmationAttempt: undefined,
       verificationCode,
     };
-    
-    // Initialize timeline
+
     this.timeline = [
       {
         status: "pending",
         timestamp: new Date(),
+        note: "",
       },
     ];
   }
@@ -399,42 +474,8 @@ deliverySchema.pre("save", async function (next) {
   next();
 });
 
-// Method to confirm delivery by customer
-deliverySchema.methods.confirmByCustomer = async function (
-  code: string
-): Promise<{ success: boolean; message: string }> {
-  if (this.status !== "in_transit" && this.status !== "picked_up") {
-    return { success: false, message: "Delivery is not in a confirmable state" };
-  }
+// ---------- Instance Methods ----------
 
-  if (this.confirmation.confirmationAttempts >= 5) {
-    return { success: false, message: "Too many confirmation attempts. Please contact support." };
-  }
-
-  this.confirmation.confirmationAttempts += 1;
-  this.confirmation.lastConfirmationAttempt = new Date();
-
-  if (code !== this.deliveryCode) {
-    return { success: false, message: "Invalid confirmation code" };
-  }
-
-  this.confirmation.customerConfirmed = true;
-  this.confirmation.customerConfirmationTime = new Date();
-
-  // If both parties have confirmed, mark as delivered
-  if (this.confirmation.customerConfirmed && this.confirmation.partnerConfirmed) {
-    this.status = "delivered";
-    this.timeline.push({
-      status: "delivered",
-      timestamp: new Date(),
-    });
-  }
-
-  await this.save();
-  return { success: true, message: "Customer confirmation successful" };
-};
-
-// Method to confirm delivery by partner
 deliverySchema.methods.confirmByPartner = async function (
   code: string
 ): Promise<{ success: boolean; message: string }> {
@@ -443,7 +484,10 @@ deliverySchema.methods.confirmByPartner = async function (
   }
 
   if (this.confirmation.confirmationAttempts >= 5) {
-    return { success: false, message: "Too many confirmation attempts. Please contact support." };
+    return {
+      success: false,
+      message: "Too many confirmation attempts. Please contact support.",
+    };
   }
 
   this.confirmation.confirmationAttempts += 1;
@@ -456,41 +500,38 @@ deliverySchema.methods.confirmByPartner = async function (
   this.confirmation.partnerConfirmed = true;
   this.confirmation.partnerConfirmationTime = new Date();
 
-  // If both parties have confirmed, mark as delivered
-  if (this.confirmation.customerConfirmed && this.confirmation.partnerConfirmed) {
-    this.status = "delivered";
-    this.timeline.push({
-      status: "delivered",
-      timestamp: new Date(),
-    });
-  }
+  this.status = "delivered";
+  this.timeline.push({
+    status: "delivered",
+    timestamp: new Date(),
+  });
 
   await this.save();
-  return { success: true, message: "Partner confirmation successful" };
+  return { success: true, message: "Delivery completed successfully!" };
 };
 
-// Method to mark as picked up
 deliverySchema.methods.markAsPickedUp = async function (
   location?: { coordinates: [number, number] }
 ): Promise<void> {
-  if (this.status !== "assigned") {
-    throw new Error("Delivery must be in assigned status to be marked as picked up");
+  if (this.status !== "request_accepted") {
+    throw new Error("Delivery must be accepted to be marked as picked up");
   }
 
   this.status = "picked_up";
   this.timeline.push({
     status: "picked_up",
     timestamp: new Date(),
-    location: location ? {
-      type: "Point",
-      coordinates: location.coordinates
-    } : undefined,
+    location: location
+      ? {
+          type: "Point",
+          coordinates: location.coordinates,
+        }
+      : undefined,
   });
 
   await this.save();
 };
 
-// Method to mark as in transit
 deliverySchema.methods.markAsInTransit = async function (
   location?: { coordinates: [number, number] }
 ): Promise<void> {
@@ -502,69 +543,107 @@ deliverySchema.methods.markAsInTransit = async function (
   this.timeline.push({
     status: "in_transit",
     timestamp: new Date(),
-    location: location ? {
-      type: "Point",
-      coordinates: location.coordinates
-    } : undefined,
+    location: location
+      ? {
+          type: "Point",
+          coordinates: location.coordinates,
+        }
+      : undefined,
   });
 
   await this.save();
 };
 
-// Method to cancel delivery
+// Customer or admin cancellation – sets status to "cancelled"
 deliverySchema.methods.cancelDelivery = async function (
   reason: string,
   cancelledBy: Types.ObjectId
-): Promise<void> {
-  const cancellableStatuses = ["pending", "assigned", "picked_up"];
-  
+) {
+  const cancellableStatuses = ["pending", "assigned", "picked_up", "request_accepted"];
   if (!cancellableStatuses.includes(this.status)) {
     throw new Error(`Delivery cannot be cancelled in ${this.status} status`);
   }
-
   this.status = "cancelled";
   this.cancellationReason = reason;
   this.cancelledBy = cancelledBy;
+  this.timeline.push({ status: "cancelled", timestamp: new Date() });
+  await this.save();
+};
+
+// Partner rejection BEFORE accepting (status = "assigned")
+// Unassigns partner and moves delivery back to "pending"
+deliverySchema.methods.unassignByPartner = async function (
+  reason: string,
+  cancelledBy: Types.ObjectId
+) {
+  if (this.status !== "assigned") {
+    throw new Error(`Partner can only unassign from 'assigned' status, current: ${this.status}`);
+  }
+  if (!this.deliveryPartner) {
+    throw new Error("No partner assigned to this delivery");
+  }
+  if (this.deliveryPartner.toString() !== cancelledBy.toString()) {
+    throw new Error("Only the assigned partner can unassign themselves");
+  }
+
+  this.status = "pending";
+  this.deliveryPartner = undefined;
+  this.cancellationReason = reason;
+  this.cancelledBy = cancelledBy;
+
   this.timeline.push({
-    status: "cancelled",
+    status: "partner_rejected",
     timestamp: new Date(),
+    note: reason,
+  });
+  this.timeline.push({
+    status: "pending",
+    timestamp: new Date(),
+    note: "Delivery reassigned to pending queue",
   });
 
   await this.save();
 };
 
-// Indexes
-deliverySchema.index({ customer: 1, createdAt: -1 });
-deliverySchema.index({ deliveryPartner: 1, status: 1 });
-deliverySchema.index({ status: 1 });
-deliverySchema.index({ deliveryCode: 1 });
-deliverySchema.index({ "pickup.location": "2dsphere" });
-deliverySchema.index({ "delivery.location": "2dsphere" });
-deliverySchema.index({ "confirmation.customerConfirmed": 1, "confirmation.partnerConfirmed": 1 });
+// Partner cancellation AFTER acceptance (status = request_accepted, picked_up, in_transit)
+// Sets status to "pending" (not cancelled) and removes partner – allows reassignment
+deliverySchema.methods.unassignPartnerAndReset = async function (
+  reason: string,
+  cancelledBy: Types.ObjectId
+) {
+  const allowedStatuses = ["assigned", "request_accepted", "picked_up", "in_transit"];
+  if (!allowedStatuses.includes(this.status)) {
+    throw new Error(`Cannot unassign partner in '${this.status}' status`);
+  }
 
-// Static method for code verification
-deliverySchema.statics.findByDeliveryCode = function (code: string) {
-  return this.findOne({ deliveryCode: code });
+  this.status = "pending";
+  this.deliveryPartner = undefined;
+  this.cancellationReason = reason;
+  this.cancelledBy = cancelledBy;
+
+  this.timeline.push({
+    status: "partner_cancelled",
+    timestamp: new Date(),
+    note: reason,
+  });
+  this.timeline.push({
+    status: "pending",
+    timestamp: new Date(),
+    note: "Delivery moved back to pending queue for reassignment",
+  });
+
+  await this.save();
 };
 
-// Virtual for delivery duration
-deliverySchema.virtual("duration").get(function (this: IDelivery) {
-  if (this.actualDuration) return this.actualDuration;
-  return this.estimatedDuration;
-});
-
-// Instance method to verify delivery code
 deliverySchema.methods.verifyCode = function (code: string): boolean {
   return this.deliveryCode === code;
 };
 
-// Method to check if delivery can be cancelled
 deliverySchema.methods.canBeCancelled = function (): boolean {
-  const cancellableStatuses = ["pending", "assigned", "picked_up"];
+  const cancellableStatuses = ["pending", "assigned", "picked_up", "request_accepted"];
   return cancellableStatuses.includes(this.status);
 };
 
-// Method to calculate delivery progress (0-100%)
 deliverySchema.methods.getProgress = function (): number {
   const statusProgress: { [key: string]: number } = {
     pending: 0,
@@ -573,9 +652,36 @@ deliverySchema.methods.getProgress = function (): number {
     in_transit: 75,
     delivered: 100,
     cancelled: 0,
+    request_accepted: 25,
+    failed_to_assign: 0,
   };
   return statusProgress[this.status] || 0;
 };
+
+// ---------- Static Methods ----------
+deliverySchema.statics.findByDeliveryCode = function (code: string) {
+  return this.findOne({ deliveryCode: code });
+};
+
+deliverySchema.statics.findByTrackingId = function (trackingId: string) {
+  return this.findOne({ trackingId: trackingId });
+};
+
+// Indexes
+deliverySchema.index({ customer: 1, createdAt: -1 });
+deliverySchema.index({ deliveryPartner: 1, status: 1 });
+deliverySchema.index({ status: 1 });
+deliverySchema.index({ deliveryCode: 1 });
+deliverySchema.index({ trackingId: 1 });
+deliverySchema.index({ "pickup.location": "2dsphere" });
+deliverySchema.index({ "delivery.location": "2dsphere" });
+deliverySchema.index({ "confirmation.partnerConfirmed": 1 });
+
+// Virtuals
+deliverySchema.virtual("duration").get(function (this: IDelivery) {
+  if (this.actualDuration) return this.actualDuration;
+  return this.estimatedDuration;
+});
 
 export const Delivery = mongoose.model<IDelivery, DeliveryModel>(
   "courries-delivery",
