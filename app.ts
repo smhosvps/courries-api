@@ -181,8 +181,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "http://192.168.102.51:8081",
-      "http://192.168.102.34:8082",
+      "http://https://api.courries.com",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
