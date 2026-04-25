@@ -3,7 +3,7 @@ import axios from 'axios';
 import { IUser } from '../models/user_model';
 
 // Environment variables with proper typing
-const ONESIGNAL_APP_ID = '2c0e56a2-f8cf-4a11-a4d6-c65482bb6005';
+const ONESIGNAL_APP_ID = '33c0b615-1954-4bc1-82f1-91117a3e76b3';
 const ONESIGNAL_API_KEY = "os_v2_app_fqhfnixyz5fbdjgwyzkifo3aawuhqlhsdipexp4pusanzxqq7r5cbwsb4ipnhjtpbaouu7znjcvmh3e345t5go6jlrciakpb7ztin6a";
 const ONESIGNAL_API_URL = 'https://onesignal.com/api/v1/notifications';
 
