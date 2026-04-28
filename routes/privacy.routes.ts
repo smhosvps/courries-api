@@ -8,7 +8,7 @@ privacyRouter.post('/create-privacy', authenticate, createPrivacy);
 privacyRouter.put('/update-privacy/:id', authenticate, updatePrivacy);
 privacyRouter.get('/get-privacy/:id', authenticate, getPrivacyById);
 privacyRouter.get('/get-privacy', getAllPrivacy);
-privacyRouter.get('/get-admin-all-privacy', authenticate, getAllPrivacyAdmin);
+privacyRouter.get('/get-admin-all-privacy',  getAllPrivacyAdmin);
 privacyRouter.delete('/delete-privacy/:id', authenticate, deletePrivacy);
 
 export default privacyRouter;
