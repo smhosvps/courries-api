@@ -4,7 +4,7 @@ import { IUser } from '../models/user_model';
 
 // Environment variables with proper typing
 const ONESIGNAL_APP_ID = '33c0b615-1954-4bc1-82f1-91117a3e76b3';
-const ONESIGNAL_API_KEY = "os_v2_app_fqhfnixyz5fbdjgwyzkifo3aawuhqlhsdipexp4pusanzxqq7r5cbwsb4ipnhjtpbaouu7znjcvmh3e345t5go6jlrciakpb7ztin6a";
+const ONESIGNAL_API_KEY = "os_v2_app_gpalmfizkrf4daxrseixuptwwmybzwhrh4qumymtx6l5ggrbvvx6t3edz4g65r3al5zdgl66tv7ieojheztcqlcllf2fcee5ajefqhq";
 const ONESIGNAL_API_URL = 'https://onesignal.com/api/v1/notifications';
 
 // Type definitions

@@ -297,10 +297,44 @@ export const pushNotificationPlayerId = async (
   }
 };
 
+/**
+ * GET /api/users/verification-status
+ * Returns the verificationStatus.submitted flag for the authenticated user.
+ * Only accessible by delivery_partner role.
+ */
+export const getVerificationStatus = async (req: Request, res: Response) => {
+  try {
+    // req.user is set by authentication middleware (e.g., protect)
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
+    }
 
+    const user = await userModel.findById(userId).select("userType deliveryPartnerInfo.verificationStatus");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
+    // Optional: restrict to delivery partners only
+    if (user.userType !== "delivery_partner") {
+      return res.status(403).json({ success: false, message: "Access denied. Not a delivery partner." });
+    }
 
+    // Safely access verificationStatus; default to { submitted: false } if missing
+    const verificationStatus = user.deliveryPartnerInfo?.verificationStatus || { submitted: false };
+    const submitted = verificationStatus.submitted === true;
 
+    return res.status(200).json({
+      success: true,
+      verificationStatus: {
+        submitted,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching verification status:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 
 
 

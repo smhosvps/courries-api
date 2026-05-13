@@ -56,6 +56,7 @@ import {
   changePassword,
   updateProfile,
   forgotPasswordAdminApi,
+  getVerificationStatus,
 } from "../controlers/user.controler";
 import { authenticate } from "../middleware/auth";
 import { upload } from "../middleware/upload.middleware";
@@ -74,7 +75,9 @@ userRouter.post('/auth/apple', appleLogin);
 userRouter.post('/auth/apple/customer', appleLoginCustomer);
 
 
-userRouter.post('/auth/google', googleSignIn);
+userRouter.post('/auth/google', googleSignIn); 
+
+userRouter.get("/verification-status", authenticate, getVerificationStatus);
 
 userRouter.put('/users/:userId/verification-status', authenticate, toggleOverallVerification);
 
