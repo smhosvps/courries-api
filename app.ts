@@ -38,6 +38,7 @@ import { initializeSocket } from "./socket";
 import deliverOrderRoutes from "./routes/deliveryStatus.routes";
 import earningRouter from "./routes/earningAdmin.routes";
 import dashboardRoute from "./routes/dashboard.routes";
+import earningxRouter from "./routes/earningSetting.routes";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -362,7 +363,8 @@ app.use(
   couponRoute,
   deliverOrderRoutes,
   earningRouter,
-  dashboardRoute
+  dashboardRoute,
+  earningxRouter
 );
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

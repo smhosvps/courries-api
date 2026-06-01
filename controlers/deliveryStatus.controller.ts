@@ -9,6 +9,7 @@ import {
 import earningModel from "../models/earning.model";
 import { cancelDeliveryCore } from "../services/services.deliveryCancellation";
 import { Types } from "mongoose";
+import earningSettingModel from "../models/earningSetting.model";
 
 
 
@@ -484,10 +485,22 @@ export const cancelMultipleDeliveries = async (req: Request, res: Response) => {
 
 
 // Helper to calculate splits (new percentages)
-const calculateSplits = (price: any) => {
+// const calculateSplits = (price: any) => {
+//   return {
+//     admin: (price * 22.5) / 100,   // 22.5% admin (includes service fee and tax)
+//     rider: (price * 77.5) / 100    // 77.5% to rider
+//   };
+// };
+
+const calculateSplits = async (price: number) => {
+  const settings = await earningSettingModel.getSingleton();
+  const adminPercent = settings.adminPercentage;
+  const riderPercent = settings.riderPercentage;
   return {
-    admin: (price * 22.5) / 100,   // 22.5% admin (includes service fee and tax)
-    rider: (price * 77.5) / 100    // 77.5% to rider
+    admin: (price * adminPercent) / 100,
+    rider: (price * riderPercent) / 100,
+    adminPercent,
+    riderPercent,
   };
 };
 
@@ -497,7 +510,8 @@ const createEarnings = async (delivery: any) => {
     return; // Already processed
   }
 
-  const splits = calculateSplits(delivery.price);
+  // const splits = calculateSplits(delivery.price);
+  const splits = await calculateSplits(delivery.price);
   const earningsToCreate = [];
 
   // Find admin user (system admin)
@@ -509,7 +523,7 @@ const createEarnings = async (delivery: any) => {
 
   if (!delivery.deliveryPartner) {
     throw new Error('Delivery partner not assigned');
-  }
+  } 
 
   // Create earning records
   earningsToCreate.push({
@@ -517,14 +531,14 @@ const createEarnings = async (delivery: any) => {
     recipient: adminUser._id,
     type: 'admin',
     amount: splits.admin,
-    percentage: 22.5
+    percentage: splits.adminPercent
   });
   earningsToCreate.push({
     delivery: delivery._id,
     recipient: delivery.deliveryPartner,
     type: 'delivery',
     amount: splits.rider,
-    percentage: 77.5
+    percentage: splits.riderPercent
   });
 
   await earningModel.insertMany(earningsToCreate);
@@ -562,7 +576,7 @@ export const confirmDeliveryByPartner = async (req: Request, res: Response) => {
       });
     }
 
-    const delivery = await Delivery.findById(deliveryId);
+    const delivery:any = await Delivery.findById(deliveryId);
 
     if (!delivery) {
       return res.status(404).json({
@@ -738,7 +752,7 @@ export const getDeliveryConfirmationStatus = async (req: Request, res: Response)
     const { deliveryId } = req.params;
     const userId = (req as any).user._id;
 
-    const delivery = await Delivery.findById(deliveryId)
+    const delivery:any = await Delivery.findById(deliveryId)
       .select("status deliveryCode confirmation customer deliveryPartner timeline price")
       .populate("customer", "firstName lastName email phone")
       .populate("deliveryPartner", "firstName lastName email phone");
