@@ -1,15 +1,15 @@
-
-
-
-// routes/contactSupport.routes.ts
+// routes/coupon.routes.ts (or the correct file name)
 import express from "express";
 import { authenticate } from "../middleware/auth";
-import { createCoupon, deleteCoupon, getCouponById, getCoupons, updateCoupon } from "../controlers/couponController";
+import { createCoupon, getCouponById, getCoupons, updateCoupon, validateCoupon, deleteCoupon } from "../controlers/couponController";
 
 
 const couponRoute = express.Router();
 
-// Public routes
+// Public routes (validation endpoint – can be public or protected)
+couponRoute.post("/validate-coupon", validateCoupon);  // ← added missing route
+
+// Protected routes (require authentication)
 couponRoute.get("/get-coupons", authenticate, getCoupons);
 couponRoute.get("/get-coupon/:id", authenticate, getCouponById);
 couponRoute.post("/create-coupon", authenticate, createCoupon);
