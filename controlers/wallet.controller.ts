@@ -2,6 +2,7 @@ import axios from "axios";
 // src/controllers/walletController.ts
 import { Request, Response } from "express";
 import { Wallet } from "../models/Wallet";
+import mongoose from "mongoose";
 
 // Helper function to generate unique reference
 const generateReference = (prefix: string = "WAL"): string => {
@@ -73,7 +74,7 @@ export const getTransactions = async (
 
     // Sort by createdAt descending (newest first)
     transactions.sort(
-      (a, b) =>
+      (a:any, b:any) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
@@ -141,7 +142,7 @@ export const fundWallet = async (req: Request, res: Response): Promise<void> => 
           `https://api.paystack.co/transaction/verify/${reference}`,
           {
             headers: {
-              Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY || 'sk_test_10625280b82af7e2c39fecbc6f8361249eab2610'}`,
+              Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
               Accept: "application/json",
               "Content-Type": "application/json",
             },
@@ -182,7 +183,7 @@ export const fundWallet = async (req: Request, res: Response): Promise<void> => 
           `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${reference}`,
           {
             headers: {
-              Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY || 'REMOVED'}`,
+              Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
               Accept: "application/json",
               "Content-Type": "application/json",
             },
@@ -397,7 +398,7 @@ export const debitWallet = async (
     wallet.balance -= amount;
 
     // Add transaction
-    const transaction = {
+    const transaction:any = {
       type: "debit" as const,
       amount,
       description,
@@ -464,8 +465,8 @@ export const transferToUser = async (
       return;
     }
 
-    const senderWallet = await Wallet.findOne({ user: req.user._id });
-    const recipientWallet = await Wallet.findOne({
+    const senderWallet:any = await Wallet.findOne({ user: req.user._id });
+    const recipientWallet:any = await Wallet.findOne({
       user: recipientUserId,
     }).populate("user", "firstName lastName email");
 
@@ -609,3 +610,320 @@ export const getBalance = async (
   }
 };
 
+
+
+
+
+// ==================== ADMIN FUNCTIONS ====================
+
+// Get all wallets with user details and optional pagination/search
+export const adminGetAllWallets = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+    const search = req.query.search as string; // search by user name or email
+
+    let filter = {};
+    if (search) {
+      // First find users matching search
+      const User = mongoose.model('courries-user'); // adjust model name if different
+      const matchedUsers = await User.find({
+        $or: [
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+        ]
+      }).select('_id');
+      const userIds = matchedUsers.map(u => u._id);
+      filter = { user: { $in: userIds } };
+    }
+
+    const wallets = await Wallet.find(filter)
+      .populate('user', 'firstName lastName email phone')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Wallet.countDocuments(filter);
+
+    const formattedWallets = wallets.map(wallet => ({
+      _id: wallet._id,
+      user: wallet.user,
+      balance: wallet.balance,
+      formattedBalance: `₦${wallet.balance.toLocaleString("en-NG")}`,
+      transactionCount: wallet.transactions.length,
+      createdAt: wallet.createdAt,
+      updatedAt: wallet.updatedAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Wallets retrieved successfully",
+      data: {
+        wallets: formattedWallets,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Admin get all wallets error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to retrieve wallets",
+    });
+  }
+};
+
+// Get a specific user's wallet with full transactions
+export const adminGetUserWallet = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId || userId === 'undefined') {
+      res.status(400).json({
+        success: false,
+        message: "Valid user ID is required",
+      });
+      return;
+    }
+
+    const wallet = await Wallet.findOne({ user: userId })
+      .populate('user', 'firstName lastName email phone');
+
+    if (!wallet) {
+      res.status(404).json({
+        success: false,
+        message: "Wallet not found for this user",
+      });
+      return;
+    }
+
+    // Sort transactions newest first
+    const sortedTransactions = [...wallet.transactions].sort(
+      (a:any, b:any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Wallet retrieved successfully",
+      data: {
+        wallet: {
+          _id: wallet._id,
+          user: wallet.user,
+          balance: wallet.balance,
+          formattedBalance: `₦${wallet.balance.toLocaleString("en-NG")}`,
+          createdAt: wallet.createdAt,
+          updatedAt: wallet.updatedAt,
+        },
+        transactions: sortedTransactions,
+        totalTransactions: sortedTransactions.length,
+      },
+    });
+  } catch (error: any) {
+    console.error("Admin get user wallet error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to retrieve wallet",
+    });
+  }
+};
+
+// Manually fund a user's wallet (admin only, no payment verification)
+export const adminManualFundWallet = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    const { amount, description, reference } = req.body;
+
+    // Validation
+    if (!userId || userId === 'undefined') {
+      res.status(400).json({
+        success: false,
+        message: "Valid user ID is required",
+      });
+      return;
+    }
+
+    if (!amount || typeof amount !== "number" || amount <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid amount. Must be a positive number",
+      });
+      return;
+    }
+
+    // Find or create wallet
+    let wallet = await Wallet.findOne({ user: userId });
+    if (!wallet) {
+      wallet = new Wallet({
+        user: userId,
+        balance: 0,
+        transactions: []
+      });
+    }
+
+    // Generate reference if not provided
+    const txReference = reference || generateReference("ADMIN_CREDIT");
+    
+    // Check reference uniqueness
+    const existingTx = wallet.transactions.find(tx => tx.reference === txReference);
+    if (existingTx) {
+      res.status(400).json({
+        success: false,
+        message: "Transaction reference already exists",
+      });
+      return;
+    }
+
+    // Update balance
+    wallet.balance += amount;
+
+    // Add transaction
+    const transaction = {
+      type: "credit" as const,
+      amount,
+      description: description || `Manual credit by admin`,
+      reference: txReference,
+      paymentMethod: "wallet" as const, // use 'wallet' for manual funding
+      metadata: {
+        adminManual: true,
+        adminId: req.user._id, // assuming req.user is populated by auth middleware
+        timestamp: new Date(),
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    wallet.transactions.push(transaction);
+    await wallet.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Wallet funded successfully by admin",
+      data: {
+        wallet: {
+          _id: wallet._id,
+          user: wallet.user,
+          balance: wallet.balance,
+          formattedBalance: `₦${wallet.balance.toLocaleString("en-NG")}`,
+          updatedAt: wallet.updatedAt,
+        },
+        transaction,
+      },
+    });
+  } catch (error: any) {
+    console.error("Admin manual fund error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fund wallet",
+    });
+  }
+};
+
+
+
+
+
+// Admin manual debit (deduct) from wallet
+export const adminManualDebitWallet = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    const { amount, description, reference } = req.body;
+
+    // Validation
+    if (!userId || userId === 'undefined') {
+      res.status(400).json({
+        success: false,
+        message: "Valid user ID is required",
+      });
+      return;
+    }
+
+    if (!amount || typeof amount !== "number" || amount <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid amount. Must be a positive number",
+      });
+      return;
+    }
+
+    // Find wallet
+    const wallet = await Wallet.findOne({ user: userId });
+    if (!wallet) {
+      res.status(404).json({
+        success: false,
+        message: "Wallet not found for this user",
+      });
+      return;
+    }
+
+    // Check sufficient balance
+    if (wallet.balance < amount) {
+      res.status(400).json({
+        success: false,
+        message: `Insufficient balance. Available: ₦${wallet.balance.toLocaleString("en-NG")}`,
+      });
+      return;
+    }
+
+    // Generate reference if not provided
+    const txReference = reference || generateReference("ADMIN_DEBIT");
+    
+    // Check reference uniqueness
+    const existingTx = wallet.transactions.find(tx => tx.reference === txReference);
+    if (existingTx) {
+      res.status(400).json({
+        success: false,
+        message: "Transaction reference already exists",
+      });
+      return;
+    }
+
+    // Deduct balance
+    wallet.balance -= amount;
+
+    // Add transaction
+    const transaction = {
+      type: "debit" as const,
+      amount,
+      description: description || `Manual debit by admin`,
+      reference: txReference,
+      paymentMethod: "wallet" as const,
+      metadata: {
+        adminManual: true,
+        adminId: req.user._id,
+        timestamp: new Date(),
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    wallet.transactions.push(transaction);
+    await wallet.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Wallet debited successfully by admin",
+      data: {
+        wallet: {
+          _id: wallet._id,
+          user: wallet.user,
+          balance: wallet.balance,
+          formattedBalance: `₦${wallet.balance.toLocaleString("en-NG")}`,
+          updatedAt: wallet.updatedAt,
+        },
+        transaction,
+      },
+    });
+  } catch (error: any) {
+    console.error("Admin manual debit error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to debit wallet",
+    });
+  }
+};

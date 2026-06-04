@@ -27,13 +27,6 @@ export const createReview = async (req: Request, res: Response) => {
       });
     }
 
-    if (!comment?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Comment is required",
-      });
-    }
-
     if (comment.length > 500) {
       return res.status(400).json({
         success: false,
@@ -42,7 +35,7 @@ export const createReview = async (req: Request, res: Response) => {
     }
 
     // Find the delivery partner
-    const partner = await userModel.findOne({
+    const partner:any = await userModel.findOne({
       _id: partnerId,
       userType: "delivery_partner",
     });
@@ -71,7 +64,7 @@ export const createReview = async (req: Request, res: Response) => {
 
     // Check if user has already reviewed this delivery
     const existingReview = partner.deliveryPartnerInfo?.reviews?.find(
-      (r) => r.deliveryId.toString() === deliveryId && r.user.toString() === userId
+      (r:any) => r.deliveryId.toString() === deliveryId && r.user.toString() === userId
     );
 
     if (existingReview) {
@@ -110,7 +103,7 @@ export const createReview = async (req: Request, res: Response) => {
     const reviews = partner.deliveryPartnerInfo.reviews;
     const totalReviews = reviews.length;
     const averageRating =
-      reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
+      reviews.reduce((sum:any, review:any) => sum + review.rating, 0) / totalReviews;
 
     partner.deliveryPartnerInfo.stats = {
       ...partner.deliveryPartnerInfo.stats,
@@ -307,7 +300,7 @@ export const updateReview = async (req: Request, res: Response) => {
     // Update partner stats
     const reviews = partner.deliveryPartnerInfo.reviews;
     const averageRating =
-      reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+      reviews.reduce((sum:any, r:any) => sum + r.rating, 0) / reviews.length;
 
     partner.deliveryPartnerInfo.stats.averageRating =
       Math.round(averageRating * 10) / 10;
@@ -421,7 +414,7 @@ export const deleteReview = async (req: Request, res: Response) => {
 
     // Find the review
     const reviewIndex = partner.deliveryPartnerInfo.reviews?.findIndex(
-      (r) => r._id.toString() === reviewId
+      (r:any) => r._id.toString() === reviewId
     );
 
     if (reviewIndex === -1 || reviewIndex === undefined) {

@@ -62,7 +62,7 @@ const walletSchema = new Schema<IWalletDocument>(
     user: {
       type: Schema.Types.ObjectId,
       ref: 'courries-user',
-      required: true, 
+      required: true,  
       unique: true,
     },
     balance: {
