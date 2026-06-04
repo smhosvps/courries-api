@@ -554,7 +554,7 @@ export const trackDelivery = async (
         "firstName lastName phone avatar vehicleType"
       )
       .select(
-        "status timeline pickup delivery package distance deliveryType trackingId price estimatedDuration customer confirmation deliveryPartner deliveryCode"
+        "status timeline pickup delivery package distance deliveryType trackingId price estimatedDuration customer confirmation deliveryPartner deliveryCode totalAmount"
       ); // Added trackingId here!
 
     if (!delivery) {
@@ -564,6 +564,9 @@ export const trackDelivery = async (
       });
       return;
     }
+
+
+    console.log("Tracking Info:", delivery);
 
 
     // Calculate estimated time of arrival (ETA) if in transit
@@ -606,7 +609,7 @@ export const trackDelivery = async (
           phone: delivery.customer.phone,
         }
         : null,
-      price: delivery.price,
+      price: delivery.totalAmount || delivery.price || 0,
       distance: delivery.distance || 0,
       deliveryCode: delivery.deliveryCode, // Also include deliveryCode if needed
       deliveryType: delivery.deliveryType, // Also include deliveryCode if needed
