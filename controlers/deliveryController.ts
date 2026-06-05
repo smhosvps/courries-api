@@ -368,7 +368,7 @@ export const deliveryType = async (req: Request, res: Response) => {
     }
 
     // Calculate price based on delivery type
-    const basePrices = {
+    const basePrices:any = {
       bicycle: { base: 800, perKm: 100 },
       bike: { base: 1800, perKm: 200 },
       car: { base: 3500, perKm: 300 },

@@ -3217,38 +3217,59 @@ export const updateVehicleRegistration = async (
   try {
     const userId = req.user._id;
     const {
+      // Vehicle registration document fields (original)
       number,
       expiryDate,
-      type, // vehicle type
-      model, // vehicle model
-      plateNumber, // vehicle plate number
-      color, // vehicle color
-      year, // vehicle year
+      // Vehicle details (original)
+      type,
+      model,
+      plateNumber,
+      color,
+      year,
+      // New: multiple document images
+      idCardImage,   // base64 of driver's license / national ID
+      optionalImage, // base64 of extra document (e.g., insurance)
+      // Optional: if you want to also update license/insurance numbers and expiry dates
+      licenseNumber,
+      licenseExpiryDate,
+      insuranceNumber,
+      insuranceExpiryDate,
     } = req.body;
 
     const currentUser = await userModel.findById(userId);
 
-    let imageUrl = req.body.image;
-    let public_id: string | undefined;
+    // Helper: upload a single image and delete the old one from Cloudinary
+    const processImageUpload = async (
+      newImageBase64: string | undefined,
+      oldImageUrl: string | undefined,
+      oldPublicId: string | undefined
+    ) => {
+      if (!newImageBase64 || !newImageBase64.startsWith("data:image")) {
+        return undefined;
+      }
+      if (oldPublicId) {
+        await deleteCloudinaryImage(oldPublicId, "documents");
+      }
+      const uploadResult = await uploadToCloudinary(newImageBase64, "documents");
+      return {
+        url: uploadResult.secure_url,
+        public_id: uploadResult.public_id,
+      };
+    };
+
+    // 1. Process vehicle registration image (original behavior)
+    let vehicleRegImageUrl = req.body.image;
+    let vehicleRegPublicId: string | undefined;
 
     if (req.body.image && req.body.image.startsWith("data:image")) {
       try {
-        if (
-          currentUser?.deliveryPartnerInfo?.documents?.vehicleRegistration
-            ?.image
-        ) {
-          await deleteCloudinaryImage(
-            currentUser.deliveryPartnerInfo.documents.vehicleRegistration.image,
-            "documents"
-          );
+        const oldReg = currentUser?.deliveryPartnerInfo?.documents?.vehicleRegistration;
+        if (oldReg?.public_id) {
+          await deleteCloudinaryImage(oldReg.public_id, "documents");
         }
-
-        const uploadResult = await uploadToCloudinary(
-          req.body.image,
-          "documents"
-        );
-        imageUrl = uploadResult.secure_url;
-        public_id = uploadResult.public_id;
+        const uploadResult = await uploadToCloudinary(req.body.image, "documents");
+        vehicleRegImageUrl = uploadResult.secure_url;
+        vehicleRegPublicId = uploadResult.public_id;
       } catch (uploadError: any) {
         return res.status(400).json({
           success: false,
@@ -3258,30 +3279,71 @@ export const updateVehicleRegistration = async (
       }
     }
 
+    // 2. Process ID card image (license)
+    const idCardUpload = await processImageUpload(
+      idCardImage,
+      currentUser?.deliveryPartnerInfo?.documents?.license?.image,
+      currentUser?.deliveryPartnerInfo?.documents?.license?.public_id
+    );
+
+    // 3. Process optional extra image (insurance)
+    const optionalUpload = await processImageUpload(
+      optionalImage,
+      currentUser?.deliveryPartnerInfo?.documents?.insurance?.image,
+      currentUser?.deliveryPartnerInfo?.documents?.insurance?.public_id
+    );
+
     // Build the update object dynamically
     const updateData: any = {};
 
-    // Update vehicle registration document fields if provided
+    // --- Original vehicle registration document fields ---
     if (number !== undefined) {
-      updateData["deliveryPartnerInfo.documents.vehicleRegistration.number"] =
-        number;
+      updateData["deliveryPartnerInfo.documents.vehicleRegistration.number"] = number;
     }
     if (expiryDate !== undefined) {
-      updateData[
-        "deliveryPartnerInfo.documents.vehicleRegistration.expiryDate"
-      ] = expiryDate;
+      updateData["deliveryPartnerInfo.documents.vehicleRegistration.expiryDate"] = expiryDate;
     }
-    if (imageUrl !== undefined) {
-      updateData["deliveryPartnerInfo.documents.vehicleRegistration.image"] =
-        imageUrl;
+    if (vehicleRegImageUrl !== undefined) {
+      updateData["deliveryPartnerInfo.documents.vehicleRegistration.image"] = vehicleRegImageUrl;
     }
-    if (public_id) {
-      updateData[
-        "deliveryPartnerInfo.documents.vehicleRegistration.public_id"
-      ] = public_id;
+    if (vehicleRegPublicId) {
+      updateData["deliveryPartnerInfo.documents.vehicleRegistration.public_id"] = vehicleRegPublicId;
     }
 
-    // Update vehicle details if provided
+    // --- License document (ID card) updates ---
+    if (idCardUpload) {
+      updateData["deliveryPartnerInfo.documents.license.image"] = idCardUpload.url;
+      updateData["deliveryPartnerInfo.documents.license.public_id"] = idCardUpload.public_id;
+      // Optionally set placeholder number/expiry if they are missing and not provided
+      if (!currentUser?.deliveryPartnerInfo?.documents?.license?.number && !licenseNumber) {
+        updateData["deliveryPartnerInfo.documents.license.number"] = "PENDING";
+        updateData["deliveryPartnerInfo.documents.license.expiryDate"] = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      }
+    }
+    if (licenseNumber !== undefined) {
+      updateData["deliveryPartnerInfo.documents.license.number"] = licenseNumber;
+    }
+    if (licenseExpiryDate !== undefined) {
+      updateData["deliveryPartnerInfo.documents.license.expiryDate"] = licenseExpiryDate;
+    }
+
+    // --- Insurance document (optional) updates ---
+    if (optionalUpload) {
+      updateData["deliveryPartnerInfo.documents.insurance.image"] = optionalUpload.url;
+      updateData["deliveryPartnerInfo.documents.insurance.public_id"] = optionalUpload.public_id;
+      if (!currentUser?.deliveryPartnerInfo?.documents?.insurance?.number && !insuranceNumber) {
+        updateData["deliveryPartnerInfo.documents.insurance.number"] = "PENDING";
+        updateData["deliveryPartnerInfo.documents.insurance.expiryDate"] = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      }
+    }
+    if (insuranceNumber !== undefined) {
+      updateData["deliveryPartnerInfo.documents.insurance.number"] = insuranceNumber;
+    }
+    if (insuranceExpiryDate !== undefined) {
+      updateData["deliveryPartnerInfo.documents.insurance.expiryDate"] = insuranceExpiryDate;
+    }
+
+    // --- Vehicle details (original) ---
     if (type !== undefined) {
       updateData["deliveryPartnerInfo.vehicle.type"] = type;
     }
@@ -3316,11 +3378,10 @@ export const updateVehicleRegistration = async (
 
     res.json({
       success: true,
-      message: "Vehicle registration and details updated successfully",
+      message: "Vehicle registration, vehicle details, and documents updated successfully",
       user: updatedUser,
     });
   } catch (error: any) {
-    // Handle validation errors (e.g., invalid vehicle type)
     if (error.name === "ValidationError") {
       return res.status(400).json({
         success: false,

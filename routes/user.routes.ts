@@ -107,11 +107,15 @@ userRouter.put("/driver-status", authenticate, updateStatus);
 // Document routes
 userRouter.put("/documents/license", authenticate, updateLicense);
 userRouter.put("/documents/insurance", authenticate, updateInsurance);
+
+
 userRouter.put(
   "/documents/vehicle-registration",
   authenticate,
   updateVehicleRegistration
 );
+
+
 userRouter.put("/documents/nin", authenticate, updateNin);
 userRouter.post("/submit-verification", authenticate, submitForVerification);
 userRouter.put("/upgrade-user-type/:id", authenticate, upgradeUserType);
